@@ -29,10 +29,15 @@ class TelegramBot:
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await update.message.reply_text(
-            f"¡Hola {user.first_name}! 👋\n\n"
-            "Bienvenido al sistema de reservas de auditorios.\n"
-            "¿Qué te gustaría hacer?",
+        # URL de la imagen en S3
+        image_url = "https://cv-cristian-cabana.s3.us-east-1.amazonaws.com/bot.JPG"
+        
+        # Enviar imagen con caption y teclado
+        await update.message.reply_photo(
+            photo=image_url,
+            caption=f"¡Hola {user.first_name}! 👋\n\n"
+                   "Bienvenido al sistema de reservas de auditorios.\n"
+                   "¿Qué te gustaría hacer?",
             reply_markup=reply_markup
         )
     
@@ -460,9 +465,15 @@ class TelegramBot:
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await query.edit_message_text(
-            f"🏛️ **Sistema de Reservas de Auditorios**\n\n"
-            "¿Qué te gustaría hacer?",
+        # URL de la imagen en S3
+        image_url = "https://cv-cristian-cabana.s3.us-east-1.amazonaws.com/bot.JPG"
+        
+        # Eliminar el mensaje anterior y enviar nueva imagen con texto
+        await query.delete_message()
+        await query.message.reply_photo(
+            photo=image_url,
+            caption="🏛️ **Sistema de Reservas de Auditorios**\n\n"
+                   "¿Qué te gustaría hacer?",
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
