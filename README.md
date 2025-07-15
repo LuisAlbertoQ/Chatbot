@@ -26,6 +26,9 @@ Un bot de Telegram completo para gestionar reservas de auditorios con interfaz c
 - Python 3.8 o superior
 - MySQL 8.0 o superior
 - Token de bot de Telegram
+- Rust (necesario para algunas dependencias de Python)
+  - Windows: [Descargar Rust](https://www.rust-lang.org/tools/install)
+  - Linux/macOS: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
 ### 1. Clonar el repositorio
 ```bash

@@ -45,29 +45,43 @@ class TelegramBot:
         query = update.callback_query
         await query.answer()
         
-        if query.data == "ver_auditorios":
-            await self.mostrar_auditorios(query)
-        elif query.data == "mis_reservas":
-            await self.mostrar_mis_reservas(query)
-        elif query.data == "ayuda":
-            await self.mostrar_ayuda(query)
-        elif query.data.startswith("auditorio_"):
-            auditorio_id = int(query.data.split("_")[1])
-            await self.mostrar_opciones_auditorio(query, auditorio_id)
-        elif query.data.startswith("disponibilidad_"):
-            auditorio_id = int(query.data.split("_")[1])
-            await self.mostrar_disponibilidad(query, auditorio_id)
-        elif query.data.startswith("eventos_"):
-            auditorio_id = int(query.data.split("_")[1])
-            await self.mostrar_eventos(query, auditorio_id)
-        elif query.data.startswith("reservar_"):
-            auditorio_id = int(query.data.split("_")[1])
-            await self.iniciar_reserva(query, auditorio_id)
-        elif query.data.startswith("cancelar_"):
-            evento_id = int(query.data.split("_")[1])
-            await self.cancelar_reserva(query, evento_id)
-        elif query.data == "volver_inicio":
-            await self.volver_inicio(query)
+        try:
+            if query.data == "ver_auditorios":
+                await self.mostrar_auditorios(query)
+            elif query.data == "mis_reservas":
+                await self.mostrar_mis_reservas(query)
+            elif query.data == "ayuda":
+                await self.mostrar_ayuda(query)
+            elif query.data.startswith("auditorio_"):
+                auditorio_id = int(query.data.split("_")[1])
+                await self.mostrar_opciones_auditorio(query, auditorio_id)
+            elif query.data.startswith("disponibilidad_"):
+                auditorio_id = int(query.data.split("_")[1])
+                await self.mostrar_disponibilidad(query, auditorio_id)
+            elif query.data.startswith("eventos_"):
+                auditorio_id = int(query.data.split("_")[1])
+                await self.mostrar_eventos(query, auditorio_id)
+            elif query.data.startswith("reservar_"):
+                auditorio_id = int(query.data.split("_")[1])
+                await self.iniciar_reserva(query, auditorio_id)
+            elif query.data.startswith("cancelar_"):
+                evento_id = int(query.data.split("_")[1])
+                await self.cancelar_reserva(query, evento_id)
+            elif query.data == "volver_inicio":
+                await self.volver_inicio(query)
+        except Exception as e:
+            # Si no podemos editar el mensaje, enviamos uno nuevo
+            if "message to edit not found" in str(e) or "There is no text in the message to edit" in str(e):
+                if query.data == "ver_auditorios":
+                    await self.enviar_nuevo_mensaje_auditorios(query)
+                elif query.data == "mis_reservas":
+                    await self.enviar_nuevo_mensaje_reservas(query)
+                elif query.data == "ayuda":
+                    await self.enviar_nuevo_mensaje_ayuda(query)
+                elif query.data == "volver_inicio":
+                    await self.enviar_nuevo_mensaje_inicio(query)
+            else:
+                raise e
     
     async def mostrar_auditorios(self, query):
         auditorios = self.auditorio_repo.obtener_auditorios()
@@ -476,4 +490,113 @@ class TelegramBot:
                    "¿Qué te gustaría hacer?",
             reply_markup=reply_markup,
             parse_mode='Markdown'
+        )
+    
+    async def enviar_nuevo_mensaje_auditorios(self, query):
+        auditorios = self.auditorio_repo.obtener_auditorios()
+        
+        if not auditorios:
+            await query.message.reply_text("No hay auditorios disponibles.")
+            return
+        
+        keyboard = []
+        for auditorio in auditorios:
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"🏛️ {auditorio.nombre} ({auditorio.capacidad} personas)",
+                    callback_data=f"auditorio_{auditorio.id}"
+                )
+            ])
+        
+        keyboard.append([InlineKeyboardButton("⬅️ Volver", callback_data="volver_inicio")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.message.reply_text(
+            "📋 **Auditorios Disponibles**\n\n"
+            "Selecciona un auditorio para ver sus opciones:",
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+    
+    async def enviar_nuevo_mensaje_reservas(self, query):
+        user_id = query.from_user.id
+        eventos = self.evento_repo.obtener_eventos_usuario(user_id)
+        
+        if not eventos:
+            keyboard = [[InlineKeyboardButton("⬅️ Volver", callback_data="volver_inicio")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.message.reply_text(
+                "No tienes reservas activas.",
+                reply_markup=reply_markup
+            )
+            return
+            
+        mensaje = "📅 **Tus Reservas**\n\n"
+        keyboard = []
+        
+        for evento in eventos:
+            auditorio = self.auditorio_repo.obtener_auditorio(evento.auditorio_id)
+            mensaje += f"🏛️ *{auditorio.nombre}*\n"
+            mensaje += f"📅 Fecha: {evento.fecha}\n"
+            mensaje += f"⏰ Hora: {evento.hora_inicio} - {evento.hora_fin}\n"
+            mensaje += f"📝 Descripción: {evento.descripcion}\n\n"
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"❌ Cancelar reserva - {auditorio.nombre} ({evento.fecha})",
+                    callback_data=f"cancelar_{evento.id}"
+                )
+            ])
+        
+        keyboard.append([InlineKeyboardButton("⬅️ Volver", callback_data="volver_inicio")])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.message.reply_text(
+            mensaje,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+    
+    async def enviar_nuevo_mensaje_ayuda(self, query):
+        keyboard = [[InlineKeyboardButton("⬅️ Volver", callback_data="volver_inicio")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        mensaje = ("ℹ️ *Ayuda del Bot*\n\n"
+                  "Aquí están los comandos disponibles:\n\n"
+                  "🏛️ *Ver Auditorios*\n"
+                  "- Muestra la lista de auditorios disponibles\n"
+                  "- Permite ver detalles y hacer reservas\n\n"
+                  "📅 *Mis Reservas*\n"
+                  "- Muestra tus reservas activas\n"
+                  "- Permite cancelar reservas\n\n"
+                  "Para hacer una reserva:\n"
+                  "1. Selecciona 'Ver Auditorios'\n"
+                  "2. Elige el auditorio deseado\n"
+                  "3. Selecciona 'Reservar'\n"
+                  "4. Sigue las instrucciones\n\n"
+                  "Para cancelar una reserva:\n"
+                  "1. Selecciona 'Mis Reservas'\n"
+                  "2. Elige 'Cancelar' en la reserva deseada")
+        
+        await query.message.reply_text(
+            mensaje,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+    
+    async def enviar_nuevo_mensaje_inicio(self, query):
+        keyboard = [
+            [InlineKeyboardButton("🏛️ Ver Auditorios", callback_data="ver_auditorios")],
+            [InlineKeyboardButton("📅 Mis Reservas", callback_data="mis_reservas")],
+            [InlineKeyboardButton("ℹ️ Ayuda", callback_data="ayuda")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        image_url = "https://cv-cristian-cabana.s3.us-east-1.amazonaws.com/bot.JPG"
+        
+        await query.message.reply_photo(
+            photo=image_url,
+            caption=f"¡Hola {query.from_user.first_name}! 👋\n\n"
+                   "Bienvenido al sistema de reservas de auditorios.\n"
+                   "¿Qué te gustaría hacer?",
+            reply_markup=reply_markup
         )
